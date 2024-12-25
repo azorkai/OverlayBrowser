@@ -1,6 +1,9 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 
 namespace OverlayBrowser
 {
@@ -33,12 +36,20 @@ namespace OverlayBrowser
         private bool isDragging = false;
         private int currentX, currentY;
 
+        private dynamic settings;
+
         public Form1()
         {
             InitializeComponent();
+
+            // Ayarlarý yükle veya oluþtur
+            LoadOrCreateSettings();
+
             SetupForm();
             SetupDragArea();
-            SetupWebView();
+
+            // WebView2 baþlatma iþlemini asenkron çalýþtýr
+            SetupWebViewAsync().ConfigureAwait(false);
 
             // Mevcut panel1'i estetik hale getir
             var aestheticPanel = new AestheticPanel();
@@ -48,14 +59,38 @@ namespace OverlayBrowser
             RegisterHotKeys();
         }
 
+        private void LoadOrCreateSettings()
+        {
+            string settingsFile = "settings.json";
+
+            if (File.Exists(settingsFile))
+            {
+                string json = File.ReadAllText(settingsFile);
+                settings = JsonConvert.DeserializeObject(json);
+            }
+            else
+            {
+                settings = new
+                {
+                    Opacity = 80,
+                    StartUrl = "https://google.com",
+                    HotkeyModifier = MOD_ALT,
+                    HotkeyKey = "M"
+                };
+
+                string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
+                File.WriteAllText(settingsFile, json);
+            }
+        }
+
         private void SetupForm()
         {
             this.FormBorderStyle = FormBorderStyle.None; // Kenarlýklarý kaldýr
             this.TopMost = true; // Her zaman üstte
             this.StartPosition = FormStartPosition.CenterScreen; // Baþlangýç pozisyonu ekran ortasý
 
-            // Þeffaflýk seviyesini ayarla (%80 görünürlük, %20 þeffaflýk)
-            SetFormOpacity(80);
+            // Þeffaflýk seviyesini ayarla
+            SetFormOpacity((int)settings.Opacity);
         }
 
         private void SetFormOpacity(int opacityPercentage)
@@ -72,8 +107,12 @@ namespace OverlayBrowser
 
         private void RegisterHotKeys()
         {
-            // ALT + M ile minimize ve restore
-            RegisterHotKey(this.Handle, HOTKEY_ID_TOGGLE, MOD_ALT, (uint)Keys.M);
+            // Ayarlardan hotkey al
+            uint modifier = (uint)settings.HotkeyModifier;
+            Keys key = (Keys)Enum.Parse(typeof(Keys), settings.HotkeyKey.ToString());
+
+            // Global hotkey kaydý
+            RegisterHotKey(this.Handle, HOTKEY_ID_TOGGLE, modifier, (uint)key);
         }
 
         private void UnregisterHotKeys()
@@ -98,6 +137,7 @@ namespace OverlayBrowser
                     {
                         this.WindowState = FormWindowState.Normal; // Formu normale döndür
                         this.BringToFront(); // Formu öne getir
+                        this.Activate(); // Formu etkinleþtir
                     }
                 }
             }
@@ -141,16 +181,29 @@ namespace OverlayBrowser
             isDragging = false;
         }
 
-        private void SetupWebView()
+        private async Task SetupWebViewAsync()
         {
-            // webView21 elementini kullan
-            webView21.CoreWebView2InitializationCompleted += WebView21_CoreWebView2InitializationCompleted;
-            webView21.EnsureCoreWebView2Async(null); // WebView2'nin baþlatýlmasý
-        }
+            // Ayarlardan baþlangýç URL'sini al
+            string startUrl = settings.StartUrl;
 
-        private void WebView21_CoreWebView2InitializationCompleted(object sender, EventArgs e)
-        {
-            webView21.CoreWebView2.Navigate("https://google.com"); // Hedef URL'yi buraya yazabilirsiniz
+            try
+            {
+                // webView21 elementini kontrol et ve baþlat
+                await webView21.EnsureCoreWebView2Async();
+
+                if (webView21.CoreWebView2 != null)
+                {
+                    webView21.CoreWebView2.Navigate(startUrl);
+                }
+                else
+                {
+                    MessageBox.Show("WebView2 baþlatýlamadý!", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"WebView2 baþlatýlýrken bir hata oluþtu: {ex.Message}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // ESC tuþuyla uygulamayý kapatma

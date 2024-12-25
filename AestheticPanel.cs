@@ -83,10 +83,9 @@ namespace OverlayBrowser
             settingsButton.FlatAppearance.BorderSize = 0;
             settingsButton.Click += (sender, e) =>
             {
-                MessageBox.Show("Ayarlar açıldı!", "Ayarlar", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 // Alternatif: Yeni bir form açabilirsiniz.
-                // var settingsForm = new SettingsForm();
-                // settingsForm.ShowDialog();
+                //var settingsForm = new SettingsForm();
+                //settingsForm.ShowDialog();
             };
             panel1.Controls.Add(settingsButton);
         }
