@@ -83,10 +83,24 @@ namespace OverlayBrowser
             settingsButton.FlatAppearance.BorderSize = 0;
             settingsButton.Click += (sender, e) =>
             {
-                // Alternatif: Yeni bir form açabilirsiniz.
-                //var settingsForm = new SettingsForm();
-                //settingsForm.ShowDialog();
+                try
+                {
+                    string settingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+                    if (File.Exists(settingsFilePath))
+                    {
+                        System.Diagnostics.Process.Start("notepad.exe", settingsFilePath);
+                    }
+                    else
+                    {
+                        MessageBox.Show("settings.json not found!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error occurred while opening settings.json: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             };
+
             panel1.Controls.Add(settingsButton);
         }
 
